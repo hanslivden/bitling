@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        {/* Google AdSense — replace publisher ID in AdBanner.tsx */}
+        {/* Google AdSense */}
         <Script
           id="adsense"
           async
