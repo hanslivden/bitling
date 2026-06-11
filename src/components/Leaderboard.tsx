@@ -30,7 +30,7 @@ export default function Leaderboard({ pet, onClose }: Props) {
 
   useEffect(() => {
     fetch('/api/leaderboard')
-      .then(r => r.json())
+      .then(r => (r.ok ? r.json() : []))
       .then((data: Entry[]) => { setEntries(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

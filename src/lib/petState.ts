@@ -1,5 +1,4 @@
 import { CreatureId, getEvolution, EVOLUTION_HOURS } from './creatures';
-import { sounds } from './sounds';
 
 export type Lineage = 'sunny' | 'stormy' | 'misty';
 
@@ -92,17 +91,25 @@ export function loadPet(): PetState | null {
   } catch { return null; }
 }
 
+// Age in real hours, frozen at time of death.
+function ageHours(s: PetState, now: number): number {
+  return ((s.dead ? s.diedAt ?? now : now) - s.bornAt) / 3_600_000;
+}
+
 // ─── Core tick ───────────────────────────────────────────────────────────────
 // Called once per TICK_MS.  Returns new state (immutable).
-function singleTick(s: PetState): PetState {
+// `now` is the simulated time of this tick (in the past when replaying
+// offline ticks), so age and time of death stay accurate.
+function singleTick(s: PetState, now: number): PetState {
   if (s.dead || s.creatureId === 'egg') return s;
 
+  const age = ageHours(s, now);
   let { hunger, happiness, weight, sick, poopCount, careScore, neglectCount } = s;
 
   if (s.sleeping) {
     // very slow drain while asleep
     if (Math.random() < 0.15) hunger = Math.max(0, hunger - 1);
-    return { ...s, hunger };
+    return { ...s, hunger, age };
   }
 
   // Hunger drops every tick (5 min prod, 20 s dev)
@@ -128,16 +135,17 @@ function singleTick(s: PetState): PetState {
   // Death: 15+ neglect ticks (≈ 1.25 hrs prod, 5 min dev) while in bad shape
   if (neglectCount >= 15 && (hunger === 0 || happiness === 0)) {
     const cause = sick ? 'illness' : hunger === 0 ? 'starvation' : 'loneliness';
-    return { ...s, hunger, happiness, poopCount, sick, careScore, neglectCount, dead: true, causeOfDeath: cause, diedAt: Date.now() };
+    return { ...s, age, hunger, happiness, poopCount, sick, careScore, neglectCount, dead: true, causeOfDeath: cause, diedAt: now };
   }
 
   // Weight drift
   if (hunger <= 1) weight = Math.max(10, weight - 1);
 
-  return { ...s, hunger, happiness, weight, sick, poopCount, careScore, neglectCount };
+  return { ...s, age, hunger, happiness, weight, sick, poopCount, careScore, neglectCount };
 }
 
 function checkEvolution(s: PetState): { state: PetState; evolved: boolean } {
+  if (s.dead) return { state: s, evolved: false };
   const hours = (Date.now() - s.bornAt) / 3_600_000;
   const threshold = EVOLUTION_HOURS[s.creatureId];
   if (threshold === undefined || hours < threshold) return { state: s, evolved: false };
@@ -152,22 +160,23 @@ function checkEvolution(s: PetState): { state: PetState; evolved: boolean } {
 // Apply all missed ticks since lastTick (called on page load)
 export function applyOfflineTicks(state: PetState): { state: PetState; ticks: number } {
   if (state.dead) return { state, ticks: 0 };
-  const elapsed = Date.now() - state.lastTick;
+  const now = Date.now();
+  const elapsed = now - state.lastTick;
   const ticks = Math.min(Math.floor(elapsed / TICK_MS), 500); // cap at ~41 hrs prod
   let s = { ...state };
   for (let i = 0; i < ticks; i++) {
-    s = singleTick(s);
+    s = singleTick(s, state.lastTick + (i + 1) * TICK_MS);
     if (s.dead) break;
   }
   const { state: evolved } = checkEvolution(s);
-  return { state: { ...evolved, lastTick: Date.now() }, ticks };
+  return { state: { ...evolved, age: ageHours(evolved, now), lastTick: now }, ticks };
 }
 
 export function doGameTick(s: PetState): PetState {
   if (s.dead) return s;
-  const ticked = singleTick({ ...s, lastTick: Date.now() });
-  const { state: checked, evolved } = checkEvolution(ticked);
-  if (evolved && !checked.dead) sounds.evolve();
+  const now = Date.now();
+  const ticked = singleTick({ ...s, age: ageHours(s, now), lastTick: now }, now);
+  const { state: checked } = checkEvolution(ticked);
   return checked;
 }
 
@@ -178,40 +187,36 @@ export function tickAnimation(s: PetState): PetState {
 }
 
 // ─── Actions ────────────────────────────────────────────────────────────────
+// Pure state transitions — sounds/animations are the caller's job (Device.tsx
+// plays them with a mute check).
 
 export function feedPet(s: PetState): PetState {
   if (s.dead || s.sleeping || s.hunger >= 4) return s;
-  sounds.feed();
   return { ...s, hunger: Math.min(4, s.hunger + 2), weight: s.weight + 2, mealsEaten: s.mealsEaten + 1, emotionFrame: 'eat', emotionTimer: 6 };
 }
 
 export function playWithPet(s: PetState): PetState {
   if (s.dead || s.sleeping || s.happiness >= 4) return s;
-  sounds.play();
   return { ...s, happiness: Math.min(4, s.happiness + 1), weight: Math.max(10, s.weight - 1), gamesPlayed: s.gamesPlayed + 1, emotionFrame: 'happy', emotionTimer: 8 };
 }
 
 export function cleanPoop(s: PetState): PetState {
   if (s.dead || s.poopCount === 0) return s;
-  sounds.clean();
   return { ...s, poopCount: 0, poopsCleaned: s.poopsCleaned + 1 };
 }
 
 export function giveMedicine(s: PetState): PetState {
   if (s.dead || !s.sick) return s;
-  sounds.medicine();
   return { ...s, sick: false, medicineGiven: s.medicineGiven + 1 };
 }
 
 export function disciplinePet(s: PetState): PetState {
   if (s.dead || s.discipline >= 4) return s;
-  sounds.discipline();
   return { ...s, discipline: Math.min(4, s.discipline + 1) };
 }
 
 export function toggleLight(s: PetState): PetState {
   if (s.dead) return s;
   const sleeping = !s.sleeping;
-  if (sleeping) sounds.sleep(); else sounds.wake();
   return { ...s, sleeping, lightOff: sleeping, emotionFrame: sleeping ? 'sleep' : 'idle' };
 }

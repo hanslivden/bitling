@@ -17,6 +17,25 @@ import StarterPicker from './StarterPicker';
 import type { Lineage } from '@/lib/petState';
 
 
+// Fire-and-forget leaderboard submission for a dead pet.
+function submitScore(n: PetState) {
+  fetch('/api/leaderboard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: n.id,
+      petName: n.name,
+      creatureId: n.creatureId,
+      ageHours: Math.floor(n.age),
+      causeOfDeath: n.causeOfDeath ?? 'unknown',
+      diedAt: n.diedAt ?? Date.now(),
+      careScore: n.careScore,
+      mealsEaten: n.mealsEaten,
+      gamesPlayed: n.gamesPlayed,
+    }),
+  }).catch(() => {});
+}
+
 export default function Device() {
   const [pet, setPet] = useState<PetState | null>(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -37,6 +56,10 @@ export default function Device() {
   const menuTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const activeAnimRef = useRef<{ type: AnimationType; startFrame: number } | null>(null);
   const rafFrameRef = useRef(0);
+
+  const triggerAnim = useCallback((type: AnimationType) => {
+    activeAnimRef.current = { type, startFrame: rafFrameRef.current };
+  }, []);
 
   // ── Load pet ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -60,6 +83,7 @@ export default function Device() {
       return;
     }
     const { state } = applyOfflineTicks(loaded);
+    if (state.dead && !loaded.dead) submitScore(state); // died while away
 
     // Bookmark URL
     const u = new URL(window.location.href);
@@ -98,29 +122,14 @@ export default function Device() {
         petRef.current = n;
 
         if (n.creatureId !== s.creatureId) {
-          if (!getMuted()) sounds.evolve();
+          if (!getMuted()) (s.creatureId === 'egg' ? sounds.hatch : sounds.evolve)();
           triggerAnim('evolve');
         }
 
         if (n.dead && !s.dead) {
           if (!getMuted()) sounds.death();
           setShowDeath(true);
-          // Submit to leaderboard
-          fetch('/api/leaderboard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: n.id,
-              petName: n.name,
-              creatureId: n.creatureId,
-              ageHours: Math.floor(n.age),
-              causeOfDeath: n.causeOfDeath ?? 'unknown',
-              diedAt: n.diedAt ?? Date.now(),
-              careScore: n.careScore,
-              mealsEaten: n.mealsEaten,
-              gamesPlayed: n.gamesPlayed,
-            }),
-          }).catch(() => {});
+          submitScore(n);
         }
 
         const needsAttention =
@@ -136,7 +145,7 @@ export default function Device() {
       });
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [isViewing]);
+  }, [isViewing, triggerAnim]);
 
   // ── Canvas RAF loop ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -165,10 +174,6 @@ export default function Device() {
     return () => cancelAnimationFrame(raf);
   }, [attention]);
 
-  const triggerAnim = useCallback((type: AnimationType) => {
-    activeAnimRef.current = { type, startFrame: rafFrameRef.current };
-  }, []);
-
   // ── Menu auto-close ───────────────────────────────────────────────────────
   const resetMenuTimer = useCallback(() => {
     clearTimeout(menuTimerRef.current);
@@ -185,13 +190,9 @@ export default function Device() {
     if (!getMuted()) sounds.beep();
   };
 
-  const pressMiddle = () => {
-    if (!pet || pet.dead || isViewing) return;
-    if (pet.creatureId === 'egg') return;
-    if (showStatus) { setShowStatus(false); return; }
-    if (!showMenu) { setShowMenu(true); resetMenuTimer(); return; }
-    const action = ACTIONS[selectedAction] as Action;
-
+  // Run a menu action: update state, play its sound, kick off its animation.
+  const executeAction = useCallback((action: Action) => {
+    if (!petRef.current || petRef.current.dead || isViewing) return;
     if (action === 'status') { setShowStatus(s => !s); setShowMenu(false); return; }
 
     setPet(s => {
@@ -239,6 +240,14 @@ export default function Device() {
       return n;
     });
     setShowMenu(false);
+  }, [isViewing, triggerAnim]);
+
+  const pressMiddle = () => {
+    if (!pet || pet.dead || isViewing) return;
+    if (pet.creatureId === 'egg') return;
+    if (showStatus) { setShowStatus(false); return; }
+    if (!showMenu) { setShowMenu(true); resetMenuTimer(); return; }
+    executeAction(ACTIONS[selectedAction]);
   };
 
   const pressRight = () => {
@@ -334,7 +343,7 @@ export default function Device() {
       </h1>
       {isViewing && (
         <p style={{ fontFamily: 'var(--font-vt323)', color: '#6D28D9', fontSize: 16 }}>
-          👁 Viewing {pet.name}'s pet
+          👁 Viewing {pet.name}&apos;s pet
         </p>
       )}
 
@@ -377,56 +386,7 @@ export default function Device() {
             visible={showMenu}
             selected={selectedAction}
             onSelect={setSelectedAction}
-            onExecute={(i) => {
-              if (!pet || pet.dead || isViewing) return;
-              const action = ACTIONS[i] as Action;
-              if (action === 'status') { setShowStatus(s => !s); setShowMenu(false); return; }
-              setPet(s => {
-                if (!s) return s;
-                let n = s;
-                switch (action) {
-                  case 'food':
-                    n = feedPet(s);
-                    if (!getMuted()) sounds.feed();
-                    triggerAnim('feed');
-                    break;
-                  case 'light':
-                    n = toggleLight(s);
-                    if (!getMuted()) (n.sleeping ? sounds.sleep : sounds.wake)();
-                    triggerAnim(n.sleeping ? 'sleep' : 'wake');
-                    break;
-                  case 'play':
-                    n = playWithPet(s);
-                    if (!getMuted()) sounds.play();
-                    triggerAnim('play');
-                    break;
-                  case 'medicine':
-                    n = giveMedicine(s);
-                    if (!getMuted()) sounds.medicine();
-                    triggerAnim('medicine');
-                    break;
-                  case 'toilet':
-                    n = cleanPoop(s);
-                    if (!getMuted()) sounds.clean();
-                    triggerAnim('clean');
-                    break;
-                  case 'discipline':
-                    n = disciplinePet(s);
-                    if (!getMuted()) sounds.discipline();
-                    triggerAnim('discipline');
-                    break;
-                  case 'attention':
-                    if (!getMuted()) sounds.happy();
-                    triggerAnim('attention');
-                    setAttention(false);
-                    break;
-                }
-                savePet(n);
-                petRef.current = n;
-                return n;
-              });
-              setShowMenu(false);
-            }}
+            onExecute={(i) => executeAction(ACTIONS[i])}
           />
 
           {/* Status overlay (shows on STATUS action) */}

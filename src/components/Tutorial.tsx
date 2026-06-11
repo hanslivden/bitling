@@ -172,7 +172,7 @@ export default function Tutorial({ onClose }: Props) {
 
           {isLast ? (
             <NavBtn onClick={onClose} primary>
-              LET'S GO ▶
+              LET&apos;S GO ▶
             </NavBtn>
           ) : (
             <NavBtn onClick={() => setPage(p => p + 1)} primary>
