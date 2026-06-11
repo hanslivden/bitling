@@ -644,6 +644,13 @@ function drawStateEffects(ctx: CanvasRenderingContext2D, pet: PetState) {
   }
 }
 
+// Soft shadow under the sprite (feet sit on sprite row 14 → y 32)
+function drawShadow(ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = '#051204';
+  ctx.fillRect(27, 33, 10, 1);
+  ctx.fillRect(29, 34, 6, 1);
+}
+
 function drawAnimation(ctx: CanvasRenderingContext2D, anim: AnimState) {
   const { type, frame } = anim;
   switch (type) {
@@ -685,6 +692,7 @@ export function drawCanvas(
     const eggPalette = LINEAGE_EGG_PALETTES[pet.lineage] ?? CREATURES.egg.palette;
     // subtle wobble: ±1px every ~1.5 s
     const wobble = Math.floor(t / 1500) % 2 === 0 ? 0 : (Math.floor(t / 300) % 2 === 0 ? 1 : 0);
+    drawShadow(ctx);
     drawSprite(ctx, eggFrame, eggPalette, spriteX + wobble, spriteY);
     // "?" thought bubble above egg
     const blink = Math.floor(t / 800) % 2 === 0;
@@ -734,6 +742,7 @@ export function drawCanvas(
 
   if (pet.sleeping) {
     const creature = CREATURES[pet.creatureId];
+    drawShadow(ctx);
     drawSprite(ctx, creature.sleepFrames[0], getPalette(pet), spriteX, spriteY);
     drawZ(ctx, 42, 10);
     drawZ(ctx, 46, 7);
@@ -751,6 +760,7 @@ export function drawCanvas(
     case 'sleep': frames = creature.sleepFrames; break;
     default:      frames = creature.idleFrames;
   }
+  drawShadow(ctx);
   drawSprite(ctx, frames[pet.animFrame % frames.length], getPalette(pet), spriteX, spriteY);
 
   // Poop
@@ -774,9 +784,9 @@ function applyScanlines(ctx: CanvasRenderingContext2D) {
 function getPalette(pet: PetState): Record<string, string> {
   const creature = CREATURES[pet.creatureId];
   if (pet.creatureId === 'blobby') {
-    if (pet.lineage === 'sunny')  return { b: '#FFD966', e: '#2D2D2D', m: '#FF8C00', f: '#2D2D2D', r: '#FFCCAA' };
-    if (pet.lineage === 'stormy') return { b: '#9BBFEA', e: '#1A3A6A', m: '#5580CC', f: '#1A3A6A', r: '#BDD4F2' };
-    if (pet.lineage === 'misty')  return { b: '#CCA8EE', e: '#4A2080', m: '#9060D0', f: '#4A2080', r: '#E0CCFF' };
+    if (pet.lineage === 'sunny')  return { o: '#7A5A10', b: '#FFD966', h: '#FFF2B0', d: '#E0A820', e: '#3A2A10', m: '#FF8C00', f: '#3A2A10', k: '#FFB838' };
+    if (pet.lineage === 'stormy') return { o: '#16324A', b: '#9BBFEA', h: '#D8EAF8', d: '#5580CC', e: '#1A3A6A', m: '#5580CC', f: '#1A3A6A', k: '#BDD4F2' };
+    if (pet.lineage === 'misty')  return { o: '#3A1A66', b: '#CCA8EE', h: '#E8D8FF', d: '#9060D0', e: '#4A2080', m: '#9060D0', f: '#4A2080', k: '#E0CCFF' };
   }
   return creature.palette;
 }
