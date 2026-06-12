@@ -40,11 +40,13 @@ function makeCtx(ox, oy) {
 
 function makePet(type) {
   return {
-    id: 'PREVIEW', creatureId: 'puffi', name: 'PREVIEW', lineage: 'sunny',
-    age: 1, hunger: 4, happiness: 4, weight: 20, discipline: 2,
+    version: 2, id: 'PREVIEW', creatureId: 'puffi', name: 'PREVIEW', lineage: 'sunny',
+    generation: 1, age: 1, hunger: 4, happiness: 4, weight: 20, discipline: 2,
     sick: false, sleeping: type === 'sleep', lightOff: false, poopCount: type === 'clean' ? 1 : 0,
+    falseAlarm: false, falseAlarmTicks: 0,
     dead: false, careScore: 100, neglectCount: 0, bornAt: Date.now(), lastTick: Date.now(),
-    evolutionStage: 1, mealsEaten: 0, gamesPlayed: 0, poopsCleaned: 0, medicineGiven: 0,
+    ticksElapsed: 0, evolutionStage: 1, mealsEaten: 0, gamesPlayed: 0, poopsCleaned: 0,
+    medicineGiven: 0, timesSick: 0,
     animFrame: 0, emotionFrame: 'idle', emotionTimer: 0,
   };
 }

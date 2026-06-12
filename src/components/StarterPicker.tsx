@@ -46,9 +46,10 @@ function EggCanvas({ lineage, size = 48 }: { lineage: Lineage; size?: number }) 
 
 interface Props {
   onCreate: (lineage: Lineage, name: string) => void;
+  generation?: number;
 }
 
-export default function StarterPicker({ onCreate }: Props) {
+export default function StarterPicker({ onCreate, generation = 1 }: Props) {
   const [step, setStep] = useState<'pick' | 'name'>('pick');
   const [chosenLineage, setChosenLineage] = useState<Lineage>('sunny');
   const [name, setName] = useState('');
@@ -70,11 +71,21 @@ export default function StarterPicker({ onCreate }: Props) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
         <div style={{ textAlign: 'center' }}>
+          {generation > 1 && (
+            <p style={{
+              fontFamily: 'var(--font-press-start)', fontSize: 7, color: '#FCD34D',
+              letterSpacing: 1, marginBottom: 10,
+            }}>
+              ★ GENERATION {generation} ★
+            </p>
+          )}
           <h2 style={{ fontFamily: 'var(--font-press-start)', fontSize: 9, color: '#A78BFA', letterSpacing: 2, marginBottom: 8 }}>
             CHOOSE YOUR EGG
           </h2>
           <p style={{ fontFamily: 'var(--font-vt323)', fontSize: 18, color: '#4B5563' }}>
-            What hatches depends on how you raise it.
+            {generation > 1
+              ? 'Your line continues. What hatches depends on how you raise it.'
+              : 'What hatches depends on how you raise it.'}
           </p>
         </div>
 

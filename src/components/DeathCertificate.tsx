@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import type { PetState } from '@/lib/petState';
 import { CREATURES } from '@/lib/creatures';
 import { renderCertificate } from '@/lib/canvasRenderer';
+import { getAchievements } from '@/lib/achievements';
 
 interface Props {
   pet: PetState;
@@ -39,22 +40,7 @@ export default function DeathCertificate({ pet, onClose, onNewPet }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#0F0F23',
-          border: '2px solid #7C3AED',
-          borderRadius: 12,
-          padding: 24,
-          maxWidth: 380,
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          maxHeight: '90vh',
-          overflowY: 'auto',
-        }}
-      >
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ textAlign: 'center' }}>
           <p style={{
@@ -72,6 +58,9 @@ export default function DeathCertificate({ pet, onClose, onNewPet }: Props) {
             color: '#E2E8F0',
           }}>
             {pet.name} the {creature.name}
+            {(pet.generation ?? 1) > 1 && (
+              <span style={{ color: '#FCD34D', fontSize: 18 }}> · GEN {pet.generation}</span>
+            )}
           </p>
         </div>
 
@@ -131,6 +120,30 @@ export default function DeathCertificate({ pet, onClose, onNewPet }: Props) {
             </div>
           ))}
         </div>
+
+        {/* Achievements */}
+        {getAchievements(pet).length > 0 && (
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {getAchievements(pet).map(a => (
+              <span
+                key={a.id}
+                title={a.desc}
+                style={{
+                  fontFamily: 'var(--font-press-start)',
+                  fontSize: 6,
+                  color: '#FCD34D',
+                  background: '#1A1200',
+                  border: '1px solid #FCD34D44',
+                  borderRadius: 4,
+                  padding: '4px 7px',
+                  letterSpacing: 0.5,
+                }}
+              >
+                ★ {a.label}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Buttons */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>

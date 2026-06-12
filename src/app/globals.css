@@ -1,10 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 @import "tailwindcss";
 
-:root {
-  --font-press-start: 'Press Start 2P', monospace;
-  --font-vt323: 'VT323', monospace;
-}
+/* Fonts are self-hosted via next/font (see layout.tsx), which sets
+   --font-press-start and --font-vt323 on <html>. */
 
 @theme inline {
   --color-background: #0F0F23;
@@ -18,6 +15,26 @@ html, body {
   color: #E2E8F0;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* ── Page backdrop: nebula gradient + drifting pixel stars ───────────────── */
+.page-bg {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px 40px;
+  gap: 20px;
+  background:
+    radial-gradient(1px 1px at 12% 20%, rgba(196, 181, 253, 0.9) 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 12%, rgba(167, 139, 250, 0.8) 50%, transparent 51%),
+    radial-gradient(2px 2px at 90% 55%, rgba(124, 58, 237, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 30% 80%, rgba(196, 181, 253, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 65% 35%, rgba(237, 233, 254, 0.5) 50%, transparent 51%),
+    radial-gradient(2px 2px at 8% 60%, rgba(167, 139, 250, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 45% 8%, rgba(237, 233, 254, 0.6) 50%, transparent 51%),
+    radial-gradient(ellipse at 50% 0%, #2D0A6B 0%, #0F0F23 60%);
 }
 
 /* ── Pixel-perfect canvas ───────────────────────────────────────────────── */
@@ -45,6 +62,21 @@ canvas {
   pointer-events: none;
   z-index: 3;
   border-radius: inherit;
+}
+
+/* ── Title ───────────────────────────────────────────────────────────────── */
+.game-title {
+  font-family: var(--font-press-start);
+  font-size: 22px;
+  color: #A78BFA;
+  letter-spacing: 6px;
+  margin-bottom: -4px;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% { text-shadow: 0 0 12px #7C3AED, 0 0 24px #7C3AED; }
+  50%       { text-shadow: 0 0 18px #A78BFA, 0 0 36px #7C3AED, 0 0 48px #4C1D95; }
 }
 
 /* ── Device shell ────────────────────────────────────────────────────────── */
@@ -110,7 +142,7 @@ canvas {
   border-radius: 8px 8px 0 0;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
+/* ── Physical buttons ────────────────────────────────────────────────────── */
 .btn-row {
   display: flex;
   justify-content: space-between;
@@ -167,7 +199,49 @@ canvas {
     0 0 0 2px #9D174D;
 }
 
-/* ── Modal overlay ───────────────────────────────────────────────────────── */
+/* ── Small pixel buttons (controls under the device, modals) ─────────────── */
+.pixel-btn {
+  font-family: var(--font-press-start);
+  font-size: 6px;
+  padding: 6px 9px;
+  background: #1A0A30;
+  color: #7C3AED;
+  border: 1px solid #4C1D95;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.07s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pixel-btn:hover {
+  background: #2D1060;
+  color: #A78BFA;
+}
+
+.pixel-btn:active {
+  transform: translateY(1px);
+}
+
+.pixel-btn--primary {
+  background: #4C1D95;
+  color: #EDE9FE;
+  border-color: #7C3AED;
+}
+
+.pixel-btn--primary:hover {
+  background: #5B21B6;
+  color: #FFFFFF;
+}
+
+.pixel-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
+/* ── Modals ──────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -178,6 +252,43 @@ canvas {
   z-index: 50;
   padding: 16px;
   backdrop-filter: blur(3px);
+}
+
+.modal-card {
+  background: #0F0F23;
+  border: 2px solid #7C3AED;
+  border-radius: 12px;
+  padding: 22px;
+  max-width: 380px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 0 32px rgba(124, 58, 237, 0.35);
+  animation: modalIn 0.16s ease-out;
+}
+
+@keyframes modalIn {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Modal scrollbars */
+.modal-card::-webkit-scrollbar { width: 6px; }
+.modal-card::-webkit-scrollbar-track { background: #1A0A30; border-radius: 3px; }
+.modal-card::-webkit-scrollbar-thumb { background: #4C1D95; border-radius: 3px; }
+
+/* ── Accessibility ───────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #A78BFA;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-title { animation: none; }
+  .modal-card { animation: none; }
 }
 
 /* ── Animations ──────────────────────────────────────────────────────────── */

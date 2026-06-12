@@ -97,4 +97,22 @@ export const sounds = {
     beep(262, 0.1, 'square', 0.18);
     beep(392, 0.14, 'square', 0.18, 0.14);
   },
+
+  refuse()      {
+    beep(196, 0.12, 'sawtooth', 0.25);
+    beep(165, 0.16, 'sawtooth', 0.25, 0.14);
+  },
+
+  gameWin()     {
+    [523, 659, 784, 1047, 1319].forEach((f, i) =>
+      beep(f, 0.08, 'square', 0.25, i * 0.08));
+  },
+
+  gameLose()    {
+    beep(330, 0.14, 'square', 0.22);
+    beep(262, 0.2, 'square', 0.22, 0.16);
+  },
+
+  roundWin()    { beep(988, 0.07, 'square', 0.22); },
+  roundLose()   { beep(220, 0.1, 'square', 0.22); },
 };

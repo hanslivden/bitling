@@ -1,5 +1,7 @@
 import { CREATURES, CreatureData, LINEAGE_EGG_FRAMES, LINEAGE_EGG_PALETTES } from './creatures';
+import { isNight } from './petState';
 import type { PetState } from './petState';
+import { getAchievements } from './achievements';
 
 export const CW = 64;
 export const CH = 56;
@@ -8,7 +10,7 @@ export const CH = 56;
 
 export type AnimationType =
   | 'feed' | 'play' | 'clean' | 'medicine'
-  | 'discipline' | 'sleep' | 'wake' | 'attention' | 'evolve';
+  | 'discipline' | 'sleep' | 'wake' | 'attention' | 'evolve' | 'refuse';
 
 export interface AnimState {
   type: AnimationType;
@@ -25,6 +27,7 @@ export const ANIM_FRAMES: Record<AnimationType, number> = {
   wake:       26,
   attention:  50,
   evolve:     72,
+  refuse:     18,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -751,6 +754,20 @@ function drawStateEffects(ctx: CanvasRenderingContext2D, pet: PetState) {
     }
   }
 
+  // ── FALSE ALARM: blinking "!?" — the pet is calling for no reason ────────
+  if (pet.falseAlarm) {
+    if (Math.floor(t / 7) % 2 === 0) {
+      const C = '#FCD34D';
+      // "!"
+      px(ctx, 42, 10, C); px(ctx, 42, 11, C); px(ctx, 42, 12, C); px(ctx, 42, 14, C);
+      // "?"
+      px(ctx, 45, 10, C); px(ctx, 46, 10, C);
+      px(ctx, 47, 11, C);
+      px(ctx, 46, 12, C);
+      px(ctx, 46, 14, C);
+    }
+  }
+
   // ── CRITICAL: red vignette pulse when both stats are zero ─────────────────
   if (pet.hunger === 0 && pet.happiness === 0) {
     const pulse = (Math.sin(t * 0.25) + 1) / 2;
@@ -764,6 +781,18 @@ function drawShadow(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#051204';
   ctx.fillRect(27, 33, 10, 1);
   ctx.fillRect(29, 34, 6, 1);
+}
+
+// REFUSE: a spoiled pet turns its nose up — red X blinks while it shakes
+function animRefuse(ctx: CanvasRenderingContext2D, frame: number) {
+  if (frame % 6 < 4) {
+    const X = '#F87171';
+    px(ctx, 41, 12, X); px(ctx, 45, 12, X);
+    px(ctx, 42, 13, X); px(ctx, 44, 13, X);
+    px(ctx, 43, 14, X);
+    px(ctx, 42, 15, X); px(ctx, 44, 15, X);
+    px(ctx, 41, 16, X); px(ctx, 45, 16, X);
+  }
 }
 
 // How the pet sprite itself moves during each animation — hops, leans,
@@ -817,6 +846,9 @@ function animSpriteOffset(anim?: AnimState | null): { dx: number; dy: number } {
       const t = (frame - 33) / 14;
       return { dx: 0, dy: -Math.round((1 - easeOut(t)) * 8) };
     }
+    case 'refuse':
+      // indignant head shake
+      return frame < 14 ? { dx: frame % 4 < 2 ? -1 : 1, dy: 0 } : { dx: 0, dy: 0 };
     default:
       return { dx: 0, dy: 0 };
   }
@@ -834,6 +866,7 @@ function drawAnimation(ctx: CanvasRenderingContext2D, anim: AnimState) {
     case 'wake':       animWake(ctx, frame);       break;
     case 'attention':  animAttention(ctx, frame);  break;
     case 'evolve':     animEvolve(ctx, frame);     break;
+    case 'refuse':     animRefuse(ctx, frame);     break;
   }
 }
 
@@ -886,7 +919,16 @@ export function drawCanvas(
     // Hearts
     for (let i = 0; i < 4; i++) drawDrumstickIcon(ctx, 2 + i * 6, 1, i < pet.hunger);
     for (let i = 0; i < 4; i++) drawSmileyIcon(ctx, CW - 26 + i * 6, 1, i < pet.happiness);
-    if (pet.sick) drawSick(ctx, CW / 2 - 1, 2);
+    if (pet.sick) {
+      drawSick(ctx, CW / 2 - 1, 2);
+    } else if (isNight(Date.now())) {
+      // tiny crescent: it's bedtime — pets rest properly only at night
+      const M = '#FDE68A';
+      px(ctx, 31, 1, M); px(ctx, 32, 1, M);
+      px(ctx, 30, 2, M);
+      px(ctx, 30, 3, M);
+      px(ctx, 31, 4, M); px(ctx, 32, 4, M);
+    }
     // Separator
     ctx.fillStyle = '#1A3020';
     ctx.fillRect(0, 7, CW, 1);
@@ -1007,6 +1049,7 @@ export function renderCertificate(pet: PetState): HTMLCanvasElement {
   const fields: [string, string][] = [
     ['NAME',  pet.name],
     ['TYPE',  creature.name.toUpperCase()],
+    ['GEN',   `${pet.generation ?? 1}`],
     ['AGE',   ageD > 0 ? `${ageD}D ${ageH % 24}H` : `${ageH}H`],
     ['CAUSE', (pet.causeOfDeath ?? 'UNKNOWN').toUpperCase()],
     ['BORN',  new Date(pet.bornAt).toLocaleDateString()],
@@ -1015,12 +1058,18 @@ export function renderCertificate(pet: PetState): HTMLCanvasElement {
   ];
   const fy = sy + 16 * SCALE + 22;
   fields.forEach(([label, value], i) => {
-    ctx.fillStyle = '#7C3AED'; ctx.fillText(label + ':', 36, fy + i * 26);
-    ctx.fillStyle = '#E2E8F0'; ctx.fillText(value, 140, fy + i * 26);
+    ctx.fillStyle = '#7C3AED'; ctx.fillText(label + ':', 36, fy + i * 24);
+    ctx.fillStyle = '#E2E8F0'; ctx.fillText(value, 140, fy + i * 24);
   });
 
   ctx.fillStyle = '#4B5563'; ctx.font = '5px "Press Start 2P", monospace'; ctx.textAlign = 'center';
-  ctx.fillText(`${pet.mealsEaten} MEALS  ${pet.gamesPlayed} GAMES  ${pet.poopsCleaned} CLEANS`, W / 2, fy + fields.length * 26 + 12);
+  ctx.fillText(`${pet.mealsEaten} MEALS  ${pet.gamesPlayed} GAMES  ${pet.poopsCleaned} CLEANS`, W / 2, fy + fields.length * 24 + 10);
+  // Achievement badges (up to 3 fit the card)
+  const badges = getAchievements(pet).slice(0, 3).map(a => `★${a.label}`);
+  if (badges.length) {
+    ctx.fillStyle = '#FCD34D';
+    ctx.fillText(badges.join('  '), W / 2, fy + fields.length * 24 + 26);
+  }
   ctx.fillStyle = '#6D28D9'; ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillText('BITLING', W / 2, H - 24);
   return c;

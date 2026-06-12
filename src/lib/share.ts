@@ -5,7 +5,7 @@ type ShareSnapshot = Pick<
   PetState,
   | 'id' | 'name' | 'creatureId' | 'age' | 'hunger' | 'happiness'
   | 'careScore' | 'dead' | 'bornAt' | 'mealsEaten' | 'gamesPlayed'
-  | 'weight' | 'causeOfDeath' | 'diedAt' | 'neglectCount'
+  | 'weight' | 'causeOfDeath' | 'diedAt' | 'neglectCount' | 'generation'
 >;
 
 // btoa/atob only handle Latin-1, so round-trip through UTF-8 bytes to
@@ -41,6 +41,7 @@ export function encodePetForShare(pet: PetState): string {
     causeOfDeath: pet.causeOfDeath,
     diedAt: pet.diedAt,
     neglectCount: pet.neglectCount,
+    generation: pet.generation,
   };
   return toBase64(JSON.stringify(snap));
 }

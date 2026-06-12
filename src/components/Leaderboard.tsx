@@ -16,6 +16,7 @@ interface Entry {
   careScore: number;
   mealsEaten: number;
   gamesPlayed: number;
+  generation?: number;
 }
 
 interface Props {
@@ -53,22 +54,7 @@ export default function Leaderboard({ pet, onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#0F0F23',
-          border: '2px solid #7C3AED',
-          borderRadius: 12,
-          padding: 20,
-          maxWidth: 360,
-          width: '100%',
-          maxHeight: '85vh',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-        }}
-      >
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
         {/* Title */}
         <h2 style={{
           fontFamily: 'var(--font-press-start)',
@@ -160,6 +146,7 @@ export default function Leaderboard({ pet, onClose }: Props) {
                   </p>
                   <p style={{ fontFamily: 'var(--font-vt323)', fontSize: 15, color: '#9CA3AF', marginTop: 2 }}>
                     {creature?.name ?? e.creatureId} · {ageD > 0 ? `${ageD}d ${ageH}h` : `${e.ageHours}h`}
+                    {(e.generation ?? 1) > 1 && <span style={{ color: '#6D28D9' }}> · gen {e.generation}</span>}
                   </p>
                 </div>
                 <div style={{

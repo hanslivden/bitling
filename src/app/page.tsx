@@ -3,16 +3,7 @@ import AdBanner from '@/components/AdBanner';
 
 export default function Home() {
   return (
-    <main style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px 40px',
-      gap: 20,
-      background: 'radial-gradient(ellipse at 50% 0%, #2D0A6B 0%, #0F0F23 60%)',
-    }}>
+    <main className="page-bg">
 
       {/* Game device */}
       <Device />

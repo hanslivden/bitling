@@ -33,13 +33,13 @@ const PAGES = [
     title: 'THE ACTIONS',
     content: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <ActionRow icon="FOOD" color="#86EFAC" desc="Feed your pet a meal. Raises hunger. Don't overfeed — it gains weight." />
-        <ActionRow icon="LITE" color="#FDE68A" desc="Toggle the light. Put your pet to sleep at night. It drains slower while sleeping." />
-        <ActionRow icon="PLAY" color="#93C5FD" desc="Play a game. Raises happiness and burns a little weight." />
+        <ActionRow icon="FOOD" color="#86EFAC" desc="Feed your pet a meal. Raises hunger. Don't overfeed — at 40g+ it gets sick more easily." />
+        <ActionRow icon="LITE" color="#FDE68A" desc="Toggle the light. Sleep only counts at night (9pm–8am) — a moon icon shows when it's bedtime. Daytime naps restore nothing." />
+        <ActionRow icon="PLAY" color="#93C5FD" desc="Play the guessing game: pick which way your pet will look, 4 rounds. Win to gain happiness and burn weight." />
         <ActionRow icon="MEDS" color="#F9A8D4" desc="Give medicine. Only works when your pet is sick. Check if the skull icon is showing." />
         <ActionRow icon="TIDY" color="#6EE7B7" desc="Clean up poop. Too much poop makes your pet sick." />
-        <ActionRow icon="DISC" color="#FCA5A5" desc="Discipline. Builds character. Has a small effect on how your pet evolves." />
-        <ActionRow icon="STAT" color="#C4B5FD" desc="View stats — name, age, weight, discipline, and care score." />
+        <ActionRow icon="DISC" color="#FCA5A5" desc="Discipline. Use it when your pet calls for no reason (a !? appears). Spoiled pets refuse food and games." />
+        <ActionRow icon="STAT" color="#C4B5FD" desc="View stats — name, generation, age, weight, discipline, and care score." />
         <ActionRow icon="HEY!" color="#FCD34D" desc="Check on your pet. Calms the attention indicator (the red blinking dot)." />
       </div>
     ),
@@ -66,7 +66,8 @@ const PAGES = [
         <p style={{ color: '#86EFAC' }}>Baby → becomes a child after 24 hours</p>
         <p style={{ color: '#A78BFA' }}>Child → becomes an adult after 3 days</p>
         <p style={{ marginTop: 8 }}>What it grows into depends on how well you cared for it. Good care leads to one creature. Neglect leads to another.</p>
-        <p style={{ color: '#A78BFA', marginTop: 8 }}>There are 7 creatures total — including one secret form. Nobody knows how to get it.</p>
+        <p style={{ color: '#A78BFA', marginTop: 8 }}>There are 9 forms to discover — check the DEX to track them. One is a secret born of neglect.</p>
+        <p style={{ color: '#FCD34D', marginTop: 8 }}>When a pet dies, its line continues: the next egg is the following generation.</p>
       </>
     ),
   },
@@ -88,9 +89,11 @@ const PAGES = [
       <>
         <Tip>Check in at least twice a day. Morning and afternoon is enough.</Tip>
         <Tip>Clean poop as soon as you see it — 3 poops = guaranteed sickness.</Tip>
-        <Tip>Put your pet to sleep at night using LITE. It drains much slower.</Tip>
-        <Tip>Play every visit to keep happiness up. One game = +1 happiness heart.</Tip>
+        <Tip>Sleep at night (when the moon icon shows). Night sleep slowly restores care; staying up late drains happiness fast.</Tip>
+        <Tip>If your pet calls with a !? and nothing is wrong, answer with DISC. Ignoring false alarms costs care score.</Tip>
+        <Tip>Keep weight under 40g — play the guessing game to slim down.</Tip>
         <Tip>The care score (visible under STAT) tracks your overall performance and decides what your pet evolves into.</Tip>
+        <Tip>Use ← → and Enter on a keyboard. ALERTS can ping you when your pet needs care while the tab is hidden.</Tip>
         <Tip>Bookmark the URL so you can come back to the same pet from any tab.</Tip>
       </>
     ),
@@ -103,21 +106,7 @@ export default function Tutorial({ onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#0F0F23',
-          border: '2px solid #7C3AED',
-          borderRadius: 12,
-          padding: 24,
-          maxWidth: 360,
-          width: '100%',
-          maxHeight: '85vh',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
         {/* Progress dots */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
           {PAGES.map((_, i) => (
