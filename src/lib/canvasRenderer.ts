@@ -16,15 +16,15 @@ export interface AnimState {
 }
 
 export const ANIM_FRAMES: Record<AnimationType, number> = {
-  feed:       48,
+  feed:       52,
   play:       66,
-  clean:      34,
-  medicine:   32,
-  discipline: 30,
+  clean:      40,
+  medicine:   36,
+  discipline: 34,
   sleep:      30,
-  wake:       24,
+  wake:       26,
   attention:  50,
-  evolve:     66,
+  evolve:     72,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,57 +125,80 @@ function drawSprite(
 }
 
 // ─── Individual animations ────────────────────────────────────────────────────
+// Overlay effects drawn on top of the pet.  animSpriteOffset() (further down)
+// nudges the pet sprite itself in sync with these so actions read as physical
+// instead of happening next to a statue.
 
-// FEED: drumstick held up — 3 bites, meat shrinks each time
+const FEED_CHOMPS = [13, 27, 39];
+
+// FEED: drumstick arcs in from the top-right — 3 bites, crumbs fly each time
 function animFeed(ctx: CanvasRenderingContext2D, frame: number) {
   const fx = 42, fy = 20; // food anchor (right of pet)
-  const x = frame < 8 ? Math.round(lerp(58, fx, easeOut(frame / 8))) : fx;
+  let x = fx, y = fy;
+  if (frame < 8) {
+    const t = easeOut(frame / 8);
+    x = Math.round(lerp(60, fx, t));
+    y = Math.round(lerp(8, fy, t) - Math.sin(Math.PI * t) * 5); // arc in
+  }
 
   // Bite stage: 0 = full, 1 = half eaten, 2 = bone only, 3 = gone
-  const stage = frame < 16 ? 0 : frame < 32 ? 1 : frame < 45 ? 2 : 3;
+  const stage = frame < 16 ? 0 : frame < 30 ? 1 : frame < 42 ? 2 : 3;
 
   // Chomp flash on each bite transition
-  const chomp = (frame >= 13 && frame <= 15)
-             || (frame >= 29 && frame <= 31)
-             || (frame >= 42 && frame <= 44);
-  if (chomp) rect(ctx, x - 3, fy + 3, 5, 2, '#FFFFC0');
+  if (FEED_CHOMPS.some(c => frame >= c && frame < c + 3)) {
+    rect(ctx, x - 3, y + 3, 5, 2, '#FFFFC0');
+  }
+
+  // Crumbs spray from the bite point for a few frames after each chomp
+  FEED_CHOMPS.forEach(c => {
+    const cf = frame - c;
+    if (cf >= 1 && cf < 6) {
+      px(ctx, x - 4 - cf,     y + 2 + cf,                    '#FFB870');
+      px(ctx, x - 3 - cf * 2, y + 4 + Math.round(cf * 0.5),  '#C96A1E');
+      px(ctx, x - 2 - cf,     y + 6 + cf,                    '#FF8C42');
+    }
+  });
+
+  const M = '#FF8C42', Md = '#C96A1E', B = '#D4C5A0';
 
   if (stage === 3) {
     // Bone arcs off to the right
-    const bf = frame - 45;
-    if (bf < 3) {
-      px(ctx, x + 1 + bf * 2, fy + 5 - bf, '#D4C5A0');
-      px(ctx, x + 2 + bf * 2, fy + 6 - bf, '#D4C5A0');
+    const bf = frame - 42;
+    if (bf < 4) {
+      px(ctx, x + 1 + bf * 2, y + 5 - bf, B);
+      px(ctx, x + 2 + bf * 2, y + 6 - bf, B);
+    }
+    // satisfied sparkle by the pet's mouth
+    if (frame >= 46 && frame % 4 < 2) {
+      px(ctx, 38, 24, '#FFFFFF'); px(ctx, 37, 23, '#FFE8A0'); px(ctx, 39, 25, '#FFE8A0');
     }
     return;
   }
 
-  const M = '#FF8C42', Md = '#C96A1E', B = '#D4C5A0';
-
   if (stage === 0) {
     // Full drumstick — big round meat cap + short bone
-    px(ctx, x+1, fy,   M); px(ctx, x+2, fy,   M);  px(ctx, x+3, fy,   M);
-    px(ctx, x,   fy+1, M); px(ctx, x+1, fy+1, Md); px(ctx, x+2, fy+1, Md); px(ctx, x+3, fy+1, Md); px(ctx, x+4, fy+1, M);
-    px(ctx, x,   fy+2, M); px(ctx, x+1, fy+2, M);  px(ctx, x+2, fy+2, Md); px(ctx, x+3, fy+2, M);  px(ctx, x+4, fy+2, M);
-    px(ctx, x+1, fy+3, M); px(ctx, x+2, fy+3, M);  px(ctx, x+3, fy+3, M);
-    px(ctx, x+2, fy+4, B);
-    px(ctx, x+2, fy+5, B); px(ctx, x+3, fy+5, B);
+    px(ctx, x+1, y,   M); px(ctx, x+2, y,   M);  px(ctx, x+3, y,   M);
+    px(ctx, x,   y+1, M); px(ctx, x+1, y+1, Md); px(ctx, x+2, y+1, Md); px(ctx, x+3, y+1, Md); px(ctx, x+4, y+1, M);
+    px(ctx, x,   y+2, M); px(ctx, x+1, y+2, M);  px(ctx, x+2, y+2, Md); px(ctx, x+3, y+2, M);  px(ctx, x+4, y+2, M);
+    px(ctx, x+1, y+3, M); px(ctx, x+2, y+3, M);  px(ctx, x+3, y+3, M);
+    px(ctx, x+2, y+4, B);
+    px(ctx, x+2, y+5, B); px(ctx, x+3, y+5, B);
   }
 
   if (stage === 1) {
     // First bite taken — top row of meat gone, cap shrinking
-    px(ctx, x+1, fy+1, M);  px(ctx, x+2, fy+1, Md); px(ctx, x+3, fy+1, M);
-    px(ctx, x+1, fy+2, M);  px(ctx, x+2, fy+2, M);
-    px(ctx, x+2, fy+3, M);
-    px(ctx, x+2, fy+4, B);
-    px(ctx, x+2, fy+5, B);  px(ctx, x+3, fy+5, B);
+    px(ctx, x+1, y+1, M);  px(ctx, x+2, y+1, Md); px(ctx, x+3, y+1, M);
+    px(ctx, x+1, y+2, M);  px(ctx, x+2, y+2, M);
+    px(ctx, x+2, y+3, M);
+    px(ctx, x+2, y+4, B);
+    px(ctx, x+2, y+5, B);  px(ctx, x+3, y+5, B);
   }
 
   if (stage === 2) {
     // Second bite — just a scrap of meat left on the bone
-    px(ctx, x+2, fy+3, M);
-    px(ctx, x+2, fy+4, B);
-    px(ctx, x+2, fy+5, B);  px(ctx, x+3, fy+5, B);
+    px(ctx, x+2, y+3, M);
+    px(ctx, x+2, y+4, B);
+    px(ctx, x+2, y+5, B);  px(ctx, x+3, y+5, B);
   }
 }
 
@@ -348,8 +371,29 @@ function animPlay(ctx: CanvasRenderingContext2D, frame: number) {
   else animPlayGuitar(ctx, frame);
 }
 
-// CLEAN: sparkles burst from poop area
+// CLEAN: a broom sweeps across the poop zone, sparkles bloom behind it
 function animClean(ctx: CanvasRenderingContext2D, frame: number) {
+  // Broom sweeps left → right over the poop area (frames 0–21)
+  if (frame < 22) {
+    const bx = Math.round(lerp(40, 62, frame / 22));
+    const by = 43 + (frame % 4 < 2 ? 0 : 1); // scrubbing bob
+    // handle
+    rect(ctx, bx + 2, by - 11, 1, 8, '#A06A3A');
+    px(ctx, bx + 2, by - 12, '#C08A50');
+    // bristle head — wide fan so it reads as a broom
+    rect(ctx, bx,     by - 3, 5, 1, '#D4B06A');
+    rect(ctx, bx - 1, by - 2, 7, 2, '#C09A50');
+    for (let i = 0; i < 7; i++) {
+      px(ctx, bx - 1 + i, by, i % 2 === 0 ? '#B08840' : '#C09A50');
+    }
+    // dust kicked up behind the broom
+    if (frame > 2) {
+      px(ctx, bx - 4, by - 3 - (frame % 3), '#8AA890');
+      px(ctx, bx - 6, by - 5 + (frame % 2), '#6E8E78');
+    }
+  }
+
+  // Sparkles bloom where the poop was, once the broom has passed
   const SPARKS = [
     { dx:  0,   dy: -1,   c: '#4ADE80' },
     { dx: -1,   dy: -0.8, c: '#34D399' },
@@ -358,85 +402,110 @@ function animClean(ctx: CanvasRenderingContext2D, frame: number) {
     { dx: -0.7, dy: -1,   c: '#4ADE80' },
     { dx:  1.2, dy: -0.6, c: '#34D399' },
   ];
-
-  if (frame < 30) {
-    const s = frame * 0.45;
+  if (frame >= 14 && frame < 38) {
+    const s = (frame - 14) * 0.45;
     SPARKS.forEach(({ dx, dy, c }) => {
-      const sx = 50 + dx * s;
+      const sx = 51 + dx * s;
       const sy = 47 + dy * s;
       px(ctx, sx,     sy,     c);
       px(ctx, sx - 1, sy,     c);
       px(ctx, sx + 1, sy,     c);
       px(ctx, sx,     sy - 1, c);
     });
-  }
-
-  // Flash burst at frame 2, 6, 10
-  if (frame === 2 || frame === 6 || frame === 10) {
-    rect(ctx, 48, 44, 3, 1, '#FFFFFF');
-    rect(ctx, 49, 43, 1, 3, '#FFFFFF');
-  }
-
-  // Sweep wipe line
-  if (frame < 18) {
-    const wx = 44 + Math.round(frame * 0.6);
-    rect(ctx, wx, 43, 1, 7, '#4ADE80');
+    // white twinkles
+    if (frame % 6 < 2) {
+      px(ctx, 49, 44, '#FFFFFF');
+    } else if (frame % 6 < 4) {
+      px(ctx, 55, 47, '#FFFFFF');
+    }
   }
 }
 
-// MEDICINE: cross pulses over pet
+// MEDICINE: a capsule drops in and is gulped, healing crosses pulse,
+// then green recovery sparkles
 function animMedicine(ctx: CanvasRenderingContext2D, frame: number) {
   const cx = 30, cy = 24;
 
-  if (frame < 28) {
-    // Pulsing size 1→3→1
-    const pulse = Math.sin(Math.PI * frame / 14);
+  // Capsule falls from above (frames 0–9): red half + white half
+  if (frame < 10) {
+    const py = Math.round(lerp(2, 20, easeOut(frame / 10)));
+    rect(ctx, cx - 1, py, 2, 2, '#F87171');
+    rect(ctx, cx + 1, py, 2, 2, '#FDF2F8');
+  }
+
+  // Gulp flash when it lands
+  if (frame >= 10 && frame < 13) rect(ctx, cx - 2, 22, 5, 2, '#FFE4F0');
+
+  // Pulsing cross (frames 12–29), size 1→3→1
+  if (frame >= 12 && frame < 30) {
+    const pulse = Math.sin(Math.PI * (frame - 12) / 9);
     const size = Math.round(1 + Math.abs(pulse) * 2);
 
-    ctx.fillStyle = '#F9A8D4';
     rect(ctx, cx,        cy - size, 1, size * 2 + 1, '#F9A8D4'); // vertical
     rect(ctx, cx - size, cy,        size * 2 + 1, 1, '#F9A8D4'); // horizontal
+    px(ctx, cx, cy, '#FFFFFF'); // bright center so it reads on any body color
 
     // Tip highlights
     if (size >= 2) {
-      px(ctx, cx,          cy - size - 1, '#FBCFE8');
-      px(ctx, cx,          cy + size,     '#FBCFE8');
-      px(ctx, cx - size - 1, cy,          '#FBCFE8');
-      px(ctx, cx + size,   cy,            '#FBCFE8');
+      px(ctx, cx,            cy - size - 1, '#FBCFE8');
+      px(ctx, cx,            cy + size,     '#FBCFE8');
+      px(ctx, cx - size - 1, cy,            '#FBCFE8');
+      px(ctx, cx + size,     cy,            '#FBCFE8');
+    }
+
+    // Second small cross, slightly right
+    if (frame >= 18) {
+      rect(ctx, 38, 19, 1, 3, '#F9A8D4');
+      rect(ctx, 37, 20, 3, 1, '#F9A8D4');
     }
   }
 
-  // Second small cross, slightly right
-  if (frame > 10 && frame < 26) {
-    ctx.fillStyle = '#F9A8D4';
-    rect(ctx, 38, 19, 1, 3, '#F9A8D4');
-    rect(ctx, 37, 20, 3, 1, '#F9A8D4');
+  // Recovery sparkles (frames 28+)
+  if (frame >= 28) {
+    const c = frame % 4 < 2 ? '#86EFAC' : '#4ADE80';
+    px(ctx, 24, 18, c); px(ctx, 40, 20, c); px(ctx, 32, 12, c);
+    px(ctx, 26, 14, frame % 4 < 2 ? '#FFFFFF' : '#86EFAC');
   }
 }
 
-// DISCIPLINE: exclamation flashes, then star burst
+// DISCIPLINE: exclamation + anger vein flash, the pet flinches and sweats,
+// then a star burst lands the lesson
 function animDiscipline(ctx: CanvasRenderingContext2D, frame: number) {
   // Blinking ! in top-right area
   if (frame < 20) {
     const blink = Math.floor(frame / 5) % 2 === 0;
     const c = blink ? '#FCD34D' : '#F59E0B';
-    rect(ctx, 42, 10, 2, 3, c); // body
-    rect(ctx, 42, 14, 2, 1, c); // dot
+    rect(ctx, 44, 9, 2, 4, c);  // body
+    rect(ctx, 44, 15, 2, 1, c); // dot
   }
 
-  // Star-burst above pet head (frame 14+)
-  if (frame >= 14) {
-    const sf = frame - 14;
-    const maxR = Math.min(sf * 0.7, 7);
-    ctx.fillStyle = '#FCD34D';
+  // Anger vein mark near the pet's head (frames 4–21)
+  if (frame >= 4 && frame < 22) {
+    const A = '#F87171';
+    px(ctx, 22, 14, A); px(ctx, 24, 14, A);
+    px(ctx, 23, 15, A);
+    px(ctx, 22, 16, A); px(ctx, 24, 16, A);
+  }
+
+  // Sweat drop sliding down the pet's side (frames 8–25)
+  if (frame >= 8 && frame < 26) {
+    const sy = 18 + Math.round((frame - 8) * 0.5);
+    px(ctx, 40, sy,     '#93C5FD');
+    px(ctx, 40, sy + 1, '#60A5FA');
+  }
+
+  // Star-burst above pet head (frame 16+)
+  if (frame >= 16) {
+    const sf = frame - 16;
+    const maxR = Math.min(sf * 0.8, 6);
     for (let i = 1; i < maxR; i++) {
-      px(ctx, 32,     14 - i, '#FCD34D'); // up
-      px(ctx, 32,     14 + i, '#FCD34D'); // down
-      px(ctx, 32 - i, 14,     '#FCD34D'); // left
-      px(ctx, 32 + i, 14,     '#FCD34D'); // right
+      px(ctx, 32,     12 - i, '#FCD34D'); // up
+      px(ctx, 32,     12 + i, '#FCD34D'); // down
+      px(ctx, 32 - i, 12,     '#FCD34D'); // left
+      px(ctx, 32 + i, 12,     '#FCD34D'); // right
     }
-    if (sf < 10) {
-      px(ctx, 32, 14, '#FFFFFF'); // bright center
+    if (sf < 8) {
+      px(ctx, 32, 12, '#FFFFFF'); // bright center
     }
   }
 }
@@ -454,6 +523,13 @@ function animSleep(ctx: CanvasRenderingContext2D, frame: number) {
     ctx.globalAlpha = 1;
   }
 
+  // Stars twinkle in around the moon
+  if (frame > 10) {
+    if (frame % 8 < 4) px(ctx, 46, 6, '#FDE68A');
+    else px(ctx, 49, 11, '#FDE68A');
+    if (frame % 6 < 3) px(ctx, 44, 13, '#FBBF24');
+  }
+
   // Staggered ZZZ bubbles rising from pet
   [[0, 42, 18], [8, 46, 16], [16, 44, 19]].forEach(([start, zx, baseY]) => {
     if (frame <= start) return;
@@ -463,7 +539,7 @@ function animSleep(ctx: CanvasRenderingContext2D, frame: number) {
   });
 }
 
-// WAKE: white flash then rays shoot outward
+// WAKE: white flash, rays shoot outward, the pet springs up, sun rises
 function animWake(ctx: CanvasRenderingContext2D, frame: number) {
   if (frame < 5) {
     // White flash — fill entire screen
@@ -485,6 +561,19 @@ function animWake(ctx: CanvasRenderingContext2D, frame: number) {
 
   if (sf < 10) {
     rect(ctx, 31, 25, 3, 3, '#FFFFFF'); // bright center
+  }
+
+  // Little sun where the moon was, with blinking rays
+  if (sf > 4) {
+    rect(ctx, 52, 5, 3, 3, '#FDE68A');
+    px(ctx, 53, 6, '#FFFBD0');
+    if (sf % 4 < 2) {
+      px(ctx, 53, 3, '#FBBF24'); px(ctx, 53, 9, '#FBBF24');
+      px(ctx, 50, 6, '#FBBF24'); px(ctx, 56, 6, '#FBBF24');
+    } else {
+      px(ctx, 51, 4, '#FBBF24'); px(ctx, 55, 4, '#FBBF24');
+      px(ctx, 51, 8, '#FBBF24'); px(ctx, 55, 8, '#FBBF24');
+    }
   }
 }
 
@@ -508,7 +597,8 @@ function animAttention(ctx: CanvasRenderingContext2D, frame: number) {
   });
 }
 
-// EVOLVE: triple white flash then sparkling burst
+// EVOLVE: triple white flash, then the new form drops in with expanding
+// rings, radiating sparks, and falling confetti
 function animEvolve(ctx: CanvasRenderingContext2D, frame: number) {
   const FLASHES = [[0,7],[12,19],[26,33]] as [number,number][];
   const isFlash = FLASHES.some(([s, e]) => frame >= s && frame < e);
@@ -521,6 +611,21 @@ function animEvolve(ctx: CanvasRenderingContext2D, frame: number) {
 
   if (frame >= 33) {
     const sf = frame - 33;
+
+    // Two expanding diamond rings, staggered
+    const RINGS: [number, string][] = [[0, '#A78BFA'], [8, '#7C3AED']];
+    RINGS.forEach(([delay, c]) => {
+      const r = Math.round((sf - delay) * 1.1);
+      if (r > 2 && r < 26) {
+        for (let i = 0; i <= r; i++) {
+          px(ctx, 32 + i, 26 - (r - i), c);
+          px(ctx, 32 - i, 26 - (r - i), c);
+          px(ctx, 32 + i, 26 + (r - i), c);
+          px(ctx, 32 - i, 26 + (r - i), c);
+        }
+      }
+    });
+
     const SPARKS = [
       { ox: 24, oy: 18, dx: -1, dy: -1, c: '#A78BFA' },
       { ox: 40, oy: 18, dx:  1, dy: -1, c: '#7C3AED' },
@@ -541,6 +646,16 @@ function animEvolve(ctx: CanvasRenderingContext2D, frame: number) {
         px(ctx, spx, spy - 1, c);
         px(ctx, spx, spy + 1, c);
       }
+    });
+
+    // Confetti drifting down
+    const CONFETTI: [number, string][] = [
+      [8, '#FCD34D'], [18, '#4ADE80'], [28, '#F472B6'],
+      [38, '#60A5FA'], [48, '#FBBF24'], [56, '#A78BFA'],
+    ];
+    CONFETTI.forEach(([cx, c], i) => {
+      const cy = 4 + ((sf * (2 + (i % 3)) >> 1) + i * 7) % 42;
+      px(ctx, cx + (Math.floor((sf + i) / 4) % 2), cy, c);
     });
   }
 }
@@ -651,6 +766,62 @@ function drawShadow(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(29, 34, 6, 1);
 }
 
+// How the pet sprite itself moves during each animation — hops, leans,
+// flinches — so the action feels physical.  The drop shadow stays put,
+// which makes vertical hops read correctly.
+function animSpriteOffset(anim?: AnimState | null): { dx: number; dy: number } {
+  if (!anim) return { dx: 0, dy: 0 };
+  const { type, frame } = anim;
+  switch (type) {
+    case 'feed': {
+      // lean toward the food, lunge on each chomp
+      const chomp = FEED_CHOMPS.some(c => frame >= c && frame < c + 3);
+      return { dx: chomp ? 2 : frame >= 8 && frame < 44 ? 1 : 0, dy: 0 };
+    }
+    case 'play': {
+      if (_playVariant === 0) {
+        // hop along with the ball bounces
+        const hop = [10, 22, 36].find(h => frame >= h && frame < h + 6);
+        if (hop === undefined) return { dx: 0, dy: 0 };
+        const t = (frame - hop) / 5;
+        return { dx: 0, dy: -Math.round(Math.sin(Math.PI * t) * 3) };
+      }
+      if (_playVariant === 1) {
+        // jitter while mashing buttons
+        return frame > 12 && frame < 56 ? { dx: Math.floor(frame / 3) % 2, dy: 0 } : { dx: 0, dy: 0 };
+      }
+      // sway with the strums
+      return frame > 10 ? { dx: Math.floor(frame / 8) % 2 === 0 ? -1 : 1, dy: 0 } : { dx: 0, dy: 0 };
+    }
+    case 'medicine':
+      // shiver until the medicine kicks in
+      return frame < 13 ? { dx: frame % 2 === 0 ? -1 : 1, dy: 0 } : { dx: 0, dy: 0 };
+    case 'discipline':
+      // flinch away, head down
+      return frame >= 4 && frame < 24 ? { dx: -1, dy: 1 } : { dx: 0, dy: 0 };
+    case 'sleep':
+      // settle down into bed
+      return frame > 10 ? { dx: 0, dy: 1 } : { dx: 0, dy: 0 };
+    case 'wake': {
+      // spring up out of bed
+      if (frame < 5 || frame >= 16) return { dx: 0, dy: 0 };
+      const t = (frame - 5) / 11;
+      return { dx: 0, dy: -Math.round(Math.sin(Math.PI * t) * 4) };
+    }
+    case 'attention':
+      // excited wiggle while the hearts float
+      return frame < 36 ? { dx: Math.floor(frame / 4) % 2 === 0 ? -1 : 1, dy: 0 } : { dx: 0, dy: 0 };
+    case 'evolve': {
+      // the new form drops in and lands after the final flash
+      if (frame < 33 || frame >= 47) return { dx: 0, dy: 0 };
+      const t = (frame - 33) / 14;
+      return { dx: 0, dy: -Math.round((1 - easeOut(t)) * 8) };
+    }
+    default:
+      return { dx: 0, dy: 0 };
+  }
+}
+
 function drawAnimation(ctx: CanvasRenderingContext2D, anim: AnimState) {
   const { type, frame } = anim;
   switch (type) {
@@ -742,8 +913,9 @@ export function drawCanvas(
 
   if (pet.sleeping) {
     const creature = CREATURES[pet.creatureId];
+    const off = animSpriteOffset(anim);
     drawShadow(ctx);
-    drawSprite(ctx, creature.sleepFrames[0], getPalette(pet), spriteX, spriteY);
+    drawSprite(ctx, creature.sleepFrames[0], getPalette(pet), spriteX + off.dx, spriteY + off.dy);
     drawZ(ctx, 42, 10);
     drawZ(ctx, 46, 7);
     if (anim) drawAnimation(ctx, anim);
@@ -760,8 +932,9 @@ export function drawCanvas(
     case 'sleep': frames = creature.sleepFrames; break;
     default:      frames = creature.idleFrames;
   }
+  const off = animSpriteOffset(anim);
   drawShadow(ctx);
-  drawSprite(ctx, frames[pet.animFrame % frames.length], getPalette(pet), spriteX, spriteY);
+  drawSprite(ctx, frames[pet.animFrame % frames.length], getPalette(pet), spriteX + off.dx, spriteY + off.dy);
 
   // Poop
   for (let i = 0; i < pet.poopCount; i++) drawPoop(ctx, 48 + i * 5, 46);
